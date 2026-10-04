@@ -111,3 +111,23 @@ AI ถาม: ยอดมัดจำบนหน้าจอเอาจาก
 cd backend && pytest -v -k "AC_" 2>&1 | tee ../specs/002-booking/test-run.txt  ผล 15 passed, 1 skipped
 cd frontend && npm test  ผล 1 passed
 กรอก ac-results.md รอบที่ 2 และสรุป gaps.md 10 แถว
+
+## #35 | 4 ต.ค. 2569 | Copilot Chat (Agent) ใน Codespaces | /tasks specs/002-booking/spec.md
+
+AI ตรวจ spec.md + plan.md + AGENTS.md ก่อนลง task และพบว่ามี Open Questions หลายข้อที่ยังต้องคงไว้ตาม spec จึงไม่เดา
+AI สร้าง tasks.md ใหม่พร้อมทั้งตารางตรวจความครบและรายการ Open Questions โดยมี 10 task รวม
+- 5 task ที่รอคำตอบหรือ CR/Q ระดับต่าง ๆ (T-03, T-05, T-07, T-09, T-03/T-04 ต่อ Q-23)
+- 5 task ที่พร้อมเริ่มทำทันทีโดยไม่ต้องตัดสินใจมากเกินไป
+AI สรุป 3 เรื่อง:
+1. task ที่ยากที่สุดคือ T-05 เพราะมีความซับซ้อนของ payment timeout + status inquiry + gateway contract
+2. AC ที่ทดสอบยากที่สุดคือ AC-07-08 เพราะต้องมีโหลดแบบพร้อมผู้ใช้ 500 คน โดยใช้แบบย่อส่วน (scaled probe) แทนการทดสอบเต็ม production-like
+3. AC-07-04 เป็นความท้าทายเฉพาะ UI เพราะต้องอธิบาย "ใกล้เคียง" และรอความชัดเจนจาก CR-01/ลูกค้าในเวลาต่อไป
+ผล: tasks.md ถูกจัดใหม่เพื่อให้ทุก AC มี task ป้องกัน gap และบันทึก Open Questions ให้ทีมตรวจก่อนเริ่มพัฒนา
+
+## #36 | 4 ต.ค. 2569 | Copilot Chat (Agent) ใน Codespaces | /implement T-10 specs/002-booking/tasks.md
+
+AI ตรวจว่า T-10 ใน repo มีอยู่แล้วและตรงกับงานหน้าจอเลือกช่างและยืนยันการจองที่ต้องทำตาม AC-07-04
+AI รัน test แบบเจาะจงของหน้าจอ: cd frontend && npm test -- --run src/__tests__/AC-07-04.test.jsx
+ผล: 1 file passed, 1 test passed
+สิ่งที่ตรวจ: UI แจ้ง "ช่วงเวลาถูกจองแล้ว" ปรับให้แสดงปุ่มช่วงใกล้เคียงและไม่เรียก onConfirmed เมื่อกรณี slot_taken
+ข้อสรุป: T-10 เสร็จและพร้อมให้ทีมตรวจ diff ก่อนรันชุด frontend ทั้งหมด

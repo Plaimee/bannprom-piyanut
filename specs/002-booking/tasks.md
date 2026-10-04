@@ -1,89 +1,118 @@
 # Tasks: การจองงานบริการซ่อมบำรุง (UC-07)
 
-Feature: SPEC-BOOKING | อ้างอิง: plan.md (plan v1) | สร้างด้วย /tasks วันที่ 2569-10-04 (tasks v1)
-แก้รอบที่ 1 (ทีมสั่ง): T-06 เดิม AI ตั้ง "พร้อมทำ" ทั้งที่ R3 รอ Q-14 แก้เป็นทำเฉพาะ R1, R2, R4, R5, R6 ตาม D-07-04 และเพิ่มหมายเหตุ
+Feature: SPEC-BOOKING | Spec ID: SPEC-BOOKING | อ้างอิง: plan.md (plan v1) | วันที่: 2569-10-04
+สรุป: 10 task | 5 task รอ Q-xx
 
-สรุป: 11 task | 0 task รอ Q-xx ทั้ง task (T-06 ทำได้บางส่วน R3 ใช้พฤติกรรมชั่วคราว)
-สถานะปัจจุบัน: เสร็จ 11 (ทุก task ผ่านการตรวจ 5 ข้อแล้ว)
+## รายการ task
 
-### T-01 ตั้งโครงโปรเจกต์ ฐานข้อมูล และตาราง
-- รองรับ: REQ-DAT-002, REQ-PRV-002, MD-DOM-01
-- ตรวจด้วย: ไม่มี AC ตรง ๆ เป็นงานพื้นฐานของ T-02 ถึง T-08
-- ไฟล์ที่แตะ: backend/requirements.txt, backend/pytest.ini, frontend/package.json, frontend/vite.config.js, backend/app/config.py, backend/app/db/session.py, backend/app/db/models.py, backend/app/db/migrations/m001_init.py, backend/app/main.py, backend/tests/conftest.py
+### T-01 ตั้งโครงโปรเจกต์และฐานข้อมูล
+- รองรับ: REQ-DAT-002, REQ-PRV-002, REQ-CON-001
+- ตรวจด้วย: ไม่มี AC ตรง ๆ เป็นงานพื้นฐานของ T-02 ถึง T-10
+- ไฟล์ที่แตะ: backend/requirements.txt, backend/pytest.ini, backend/app/config.py, backend/app/db/session.py, backend/app/db/models.py, backend/app/db/migrations/m001_init.py, backend/app/main.py, backend/tests/conftest.py, frontend/package.json, frontend/vite.config.js
 - ต้องทำหลัง: ไม่มี
-- เสร็จเมื่อ: pytest และ npm test รันได้ (ยังไม่มี test ของ AC) upgrade(engine) สร้างตาราง 8 ตารางได้ และ jobs.status รับได้เฉพาะ 8 ค่าตาม glossary
-- สถานะ: เสร็จ
+- เสร็จเมื่อ: pytest และ npm test รันได้ และ upgrade(engine) สร้างตารางหลักและสถานะงานตาม MD-STM-01 ได้
+- สถานะ: พร้อมทำ
 
-### T-02 ล็อกช่วงเวลาและหมดอายุอัตโนมัติ
-- รองรับ: REQ-FN-041, AS-07, BR-02
-- ตรวจด้วย: AC-07-04 (ส่วนล็อก) และ test พื้นฐาน hold หมดอายุใน 10 นาที
-- ไฟล์ที่แตะ: backend/app/booking/service.py (hold_slot), backend/app/technicians/service.py (release_expired_holds), backend/app/booking/router.py (POST /slots/{id}/hold)
-- ต้องทำหลัง: T-01
-- เสร็จเมื่อ: POST /slots/{id}/hold ตอบ hold_expires_at = now + HOLD_MINUTES และคนอื่นล็อกซ้ำได้ 409
-- สถานะ: เสร็จ
-
-### T-03 ค้นช่างว่างตามประเภทงาน ระยะทาง และช่วงที่ไม่ซ้อน
+### T-02 ค้นช่างว่างตามประเภทงาน/ที่อยู่/ระยะทาง
 - รองรับ: REQ-FN-008, BR-02, BR-03, AS-06
 - ตรวจด้วย: AC-07-02
 - ไฟล์ที่แตะ: backend/app/technicians/service.py, backend/app/technicians/router.py, backend/app/clock.py, backend/tests/test_booking.py
 - ต้องทำหลัง: T-01
-- เสร็จเมื่อ: test_AC_07_02_slot_not_rebookable ผ่าน
-- สถานะ: เสร็จ
+- เสร็จเมื่อ: test_AC_07_02 ผ่าน โดยแสดงเฉพาะช่างที่ว่างและอยู่ในระดับ 15 กิโลเมตรตาม BR-03
+- สถานะ: พร้อมทำ
 
-### T-04 สร้าง endpoint จองงาน (POST /bookings) และตัดมัดจำแบบ authorize แล้ว capture
+### T-03 ล็อกช่วงเวลาและหมดอายุอัตโนมัติ
+- รองรับ: REQ-FN-041, AS-07, BR-02
+- ตรวจด้วย: AC-07-04
+- ไฟล์ที่แตะ: backend/app/booking/service.py, backend/app/booking/router.py, backend/app/technicians/service.py, backend/tests/test_booking.py
+- ต้องทำหลัง: T-01
+- เสร็จเมื่อ: POST /slots/{id}/hold ให้ hold_expires_at = now + HOLD_MINUTES และระบบยอมให้ล็อกซ้ำได้เฉพาะเมื่อครบกำหนดเวลา
+- สถานะ: รอ Q-18
+
+### T-04 สร้างงานยืนยันแล้วจากการจอง
 - รองรับ: REQ-FN-008, REQ-FN-041, REQ-IF-001, REQ-CON-003
 - ตรวจด้วย: AC-07-01, AC-07-04
-- ไฟล์ที่แตะ: backend/app/booking/service.py (create_booking), backend/app/booking/router.py, backend/app/payments/gateway.py, backend/app/payments/service.py, backend/tests/test_booking.py
+- ไฟล์ที่แตะ: backend/app/booking/service.py, backend/app/booking/router.py, backend/app/payments/gateway.py, backend/app/payments/service.py, backend/tests/test_booking.py
 - ต้องทำหลัง: T-02, T-03
-- เสร็จเมื่อ: test_AC_07_01_booking_success และ test_AC_07_04_no_charge_when_slot_taken ผ่าน
-- สถานะ: เสร็จ (ระหว่างทำพบ GAP-05 "ใกล้เคียง" ไม่มีตัวเลข เปิด CR-01 ก่อนจึงทำต่อ)
+- เสร็จเมื่อ: test_AC_07_01 และ test_AC_07_04 สำหรับ path จองสำเร็จผ่าน และระบบไม่ยอมสร้างงานซ้ำบน slot เดียวกัน
+- สถานะ: พร้อมทำ
 
-### T-05 gateway-timeout และ status-inquiry ด้วย reference เดิม
-- รองรับ: REQ-IF-005, REQ-IF-001, MD-SEQ-07-05
+### T-05 ชำระมัดจำและตรวจสถานะ gateway
+- รองรับ: REQ-IF-001, REQ-IF-005, REQ-CON-003
 - ตรวจด้วย: AC-07-05, AC-07-06, AC-07-07
-- ไฟล์ที่แตะ: backend/app/payments/service.py, backend/app/payments/gateway.py (GatewayTimeout, status_inquiry), backend/tests/test_payment.py
+- ไฟล์ที่แตะ: backend/app/payments/service.py, backend/app/payments/gateway.py, backend/tests/test_payment.py
 - ต้องทำหลัง: T-04
-- เสร็จเมื่อ: test_AC_07_05, test_AC_07_06, test_AC_07_07 ผ่าน และ authorize ถูกเรียกครั้งเดียวต่อ ref
-- สถานะ: เสร็จ (รอบแรก test_AC_07_05 ไม่ผ่านเพราะ GAP-07 ค่า timeout ไม่ตรง แก้ config แล้วผ่าน)
+- เสร็จเมื่อ: authorize แบบครั้งเดียว, capture หลังยืนยัน, และเมื่อ gateway timeout ใช้ status inquiry ด้วย reference เดิมตามเงื่อนไขชั่วคราว
+- สถานะ: รอ Q-19
 
-### T-06 ยกเลิกงานและคืนมัดจำตาม BR-01 (เฉพาะ R1, R2, R4, R5, R6)
-- รองรับ: REQ-BR-001, BR-01, MD-STM-01
-- ตรวจด้วย: AC-07-10 (Scenario Outline ทุกแถวยกเว้น R3)
-- ไฟล์ที่แตะ: backend/app/refund/rules.py, backend/app/refund/service.py, backend/app/refund/router.py, backend/tests/test_refund.py
-- ต้องทำหลัง: T-04
-- เสร็จเมื่อ: test_AC_07_10_refund ผ่านทุกแถวที่ไม่ใช่ R3 และ R3 ตอบ 409 ตามพฤติกรรมชั่วคราว
-- สถานะ: เสร็จ (R3 รอ Q-14 test ข้ามไว้พร้อมเหตุผล)
-
-### T-07 คิวแจ้งเตือนลูกค้าและช่างภายใน 60 วินาที
+### T-06 ส่งข้อความแจ้งให้ลูกค้าและช่างภายใน 60 วินาที
 - รองรับ: REQ-FN-012, IF-02
 - ตรวจด้วย: AC-07-03
-- ไฟล์ที่แตะ: backend/app/notify/queue.py, backend/app/booking/service.py (enqueue), backend/app/main.py (GET /notifications/queue), backend/tests/test_booking.py
+- ไฟล์ที่แตะ: backend/app/notify/queue.py, backend/app/booking/service.py, backend/app/main.py, backend/tests/test_booking.py
 - ต้องทำหลัง: T-04
-- เสร็จเมื่อ: test_AC_07_03_notify_both_within_60s ผ่าน
-- สถานะ: เสร็จ
+- เสร็จเมื่อ: test_AC_07_03 ผ่าน และข้อความถูกส่งไปสองฝ่ายภายใน 60 วินาทีหลังสร้างงาน
+- สถานะ: พร้อมทำ
 
-### T-08 มุมมองช่างซ่อนเบอร์ลูกค้าจนก่อนนัด 2 ชั่วโมง และตัวกรอง log
+### T-07 คืนมัดจำตาม BR-01
+- รองรับ: REQ-BR-001, BR-01, MD-STM-01
+- ตรวจด้วย: AC-07-10
+- ไฟล์ที่แตะ: backend/app/refund/rules.py, backend/app/refund/service.py, backend/app/refund/router.py, backend/tests/test_refund.py
+- ต้องทำหลัง: T-04
+- เสร็จเมื่อ: BR-01 R1, R2, R4, R5, R6 ผ่าน และ R3 ใช้พฤติกรรมชั่วคราวตาม D-07-04 จนกว่าจะมีคำตอบจาก Q-14
+- สถานะ: รอ Q-14
+
+### T-08 ซ่อนเบอร์ลูกค้าและป้องกัน log รั่ว
 - รองรับ: REQ-SEC-004, REQ-PRV-002
 - ตรวจด้วย: AC-07-09
-- ไฟล์ที่แตะ: backend/app/privacy.py, backend/app/booking/service.py (technician_view), backend/app/booking/router.py (GET /jobs/{id}/technician-view), backend/tests/test_privacy.py
+- ไฟล์ที่แตะ: backend/app/privacy.py, backend/app/booking/service.py, backend/app/booking/router.py, backend/tests/test_privacy.py
 - ต้องทำหลัง: T-04
-- เสร็จเมื่อ: test_AC_07_09_phone_hidden_until_2h ผ่าน และเมื่อแก้ PHONE_REVEAL_HOURS เป็น 3 test ต้องพัง (พิสูจน์ชั้น 3 แล้ว)
-- สถานะ: เสร็จ
+- เสร็จเมื่อ: ช่างเห็นเบอร์ได้เฉพาะ 2 ชั่วโมงก่อนนัดจนถึงปิดงาน และ log ไม่มีค่า phone
+- สถานะ: พร้อมทำ
 
-### T-09 test ย่อส่วนรับโหลดสำหรับ REQ-QA-003
+### T-09 ทดสอบประสิทธิภาพสำหรับ AC-07-08
 - รองรับ: REQ-QA-003
-- ตรวจด้วย: AC-07-08 (ฉบับย่อส่วน 20 คำขอ รอ CR-02 เป็นเกณฑ์ตรวจรับจริง)
-- ไฟล์ที่แตะ: backend/tests/test_load_scaled.py
-- ต้องทำหลัง: T-03
-- เสร็จเมื่อ: test_AC_07_08_search_under_load_scaled รันได้และบันทึกวิธีย่อส่วนใน ac-results.md
-- สถานะ: เสร็จ (ผลเป็นสัญญาณบนเครื่องนักศึกษา ไม่ใช่ผลตรวจรับ)
+- ตรวจด้วย: AC-07-08
+- ไฟล์ที่แตะ: backend/tests/test_load_scaled.py, specs/002-booking/quality-requirements.md, specs/002-booking/ac-results.md
+- ต้องทำหลัง: T-02, T-04
+- เสร็จเมื่อ: test ย่อส่วนผู้ใช้พร้อมกัน 500 คนสำหรับ flow ค้นหาและยืนยันผ่านและรายงานผลตาม CR-02 ที่ยังรอ SH-01 ตัดสิน
+- สถานะ: รอ CR-02
 
-### T-10 หน้าจอเลือกช่าง ยืนยัน และผลการจอง (ใช้ API จำลอง)
-- รองรับ: REQ-FN-008, REQ-FN-041, AC-07-04 (ส่วนแสดงผล)
+### T-10 หน้าจอเลือกช่างและยืนยันการจอง
+- รองรับ: REQ-FN-008, REQ-FN-041
 - ตรวจด้วย: AC-07-04 (หน้าจอ)
-- ไฟล์ที่แตะ: frontend/src/App.jsx, frontend/src/api/client.js, frontend/src/pages/TechnicianPicker.jsx, frontend/src/pages/ConfirmBooking.jsx, frontend/src/pages/BookingResult.jsx, frontend/src/__tests__/AC-07-04.test.jsx, frontend/src/setupTests.js, frontend/vite.config.js, frontend/package.json, frontend/index.html
-- ต้องทำหลัง: ไม่มี (ใช้สัญญา API ใน plan.md ข้อ 4)
-- เสร็จเมื่อ: npm test ผ่าน AC-07-04.test.jsx
+- ไฟล์ที่แตะ: frontend/src/App.jsx, frontend/src/api/client.js, frontend/src/pages/TechnicianPicker.jsx, frontend/src/pages/ConfirmBooking.jsx, frontend/src/pages/BookingResult.jsx, frontend/src/__tests__/AC-07-04.test.jsx
+- ต้องทำหลัง: ไม่มี
+- เสร็จเมื่อ: UI แสดงช่างที่ว่างและช่วงเวลาให้เลือก, ถ้าช่วงถูกล็อกแล้วให้แสดง 409/ข้อความช่วงใกล้เคียง และผู้ใช้สามารถยืนยันการจองได้
+- สถานะ: พร้อมทำ
+
+## ตารางตรวจความครบ
+
+### 1) AC ID | task ที่ตรวจ AC นี้
+| AC ID | task ที่ตรวจ AC นี้ |
+|---|---|
+| AC-07-01 | T-04 |
+| AC-07-02 | T-02 |
+| AC-07-03 | T-06 |
+| AC-07-04 | T-03, T-04, T-10 |
+| AC-07-05 | T-05 |
+| AC-07-06 | T-05 |
+| AC-07-07 | T-05 |
+| AC-07-08 | T-09 |
+| AC-07-09 | T-08 |
+| AC-07-10 | T-07 |
+
+### 2) Constraint ID | task ที่ทำให้เป็นจริง
+| Constraint ID | task ที่ทำให้เป็นจริง |
+|---|---|
+| REQ-CON-001 | T-01 |
+| REQ-CON-003 | T-04, T-05 |
+
+## สิ่งที่ยังไม่ทำ
+- Q-14: BR-01 R3 ควรคืนเงินเท่าไรและยกเลิกได้หรือไม่ | รอ T-07
+- Q-18: ระยะล็อก 10 นาทีเป็นลายลักษณ์อักษรหรือไม่ | รอ T-03
+- Q-19: gateway-timeout ตามสัญญาคือกี่วินาที | รอ T-05
+- Q-22: ServiceAddress.geoPoint ต้องเป็น PII หรือไม่ | รอ T-08
+- Q-23: ถ้าลูกค้าปิดเบราว์เซอร์ระหว่างล็อก ใครปลดล็อก | รอ T-03, T-04ญา API ใน plan.md ข้อ 4)- เสร็จเมื่อ: npm test ผ่าน AC-07-04.test.jsx
 - สถานะ: เสร็จ
 
 ### T-11 ต่อหน้าจอกับ API จริง
