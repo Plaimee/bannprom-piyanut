@@ -3,8 +3,9 @@ R3 ข้าม (รอ Q-14) ตาม D-07-04 แต่ยังตรวจ�
 from datetime import timedelta
 
 import pytest
+from sqlalchemy import select
 
-from app.db.models import Job, set_status
+from app.db.models import Job, Refund, SLOT_FREE, set_status
 from tests.conftest import NOW, book
 
 
@@ -39,6 +40,17 @@ def test_AC_07_10_refund(client, db, seed, row, status, hours_before, by, expect
     assert r.json()["rule"] == row
     assert r.json()["status"] == expect_status
     assert r.json()["refund_amount"] == expect_refund
+    db.refresh(job)
+    assert job.status == expect_status
+    db.refresh(job.slot)
+    assert job.slot.state == SLOT_FREE
+    refunds = db.scalars(select(Refund).where(Refund.job_id == job.id)).all()
+    if row == "R5":
+        assert refunds == []
+    else:
+        assert len(refunds) == 1
+        assert refunds[0].rule == row
+        assert refunds[0].amount == expect_refund
 
 
 # รองรับ AC-07-10 แถว R6: ยกเลิกไม่ได้
@@ -48,6 +60,7 @@ def test_AC_07_10_refund_R6_not_allowed(client, db, seed):
     r = cancel(client, job.id, "customer", job.scheduled_start)
     assert r.status_code == 409 and r.json()["rule"] == "R6"
     db.refresh(job); assert job.status == "in_progress"
+    assert db.scalars(select(Refund).where(Refund.job_id == job.id)).all() == []
 
 
 # รองรับ AC-07-10 แถว R3: รอ Q-14 ยังตัดสินยอดคืนไม่ได้ จึงข้าม แต่พฤติกรรมชั่วคราวต้องปฏิเสธ
@@ -61,3 +74,6 @@ def test_AC_07_10_refund_R3_temporary_behaviour(client, db, seed):
     set_status(db, job, "en_route", NOW); db.commit()
     r = cancel(client, job.id, "customer", job.scheduled_start - timedelta(hours=1))
     assert r.status_code == 409 and r.json()["rule"] == "R3" and "call center" in r.json()["message"]
+    db.refresh(job)
+    assert job.status == "en_route"
+    assert db.scalars(select(Refund).where(Refund.job_id == job.id)).all() == []

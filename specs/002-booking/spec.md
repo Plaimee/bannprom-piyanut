@@ -45,7 +45,7 @@ Non-goals (R1):
 | REQ-FN-012 | แจ้งลูกค้าและช่างภายใน 60 วินาทีหลังสร้างงาน | Must | High | AC-07-03 | |
 | REQ-BR-001 | คืนมัดจำตาม BR-01 (Decision Table R1 ถึง R6) | Must | Low | AC-07-10 (Outline) | R3 รอ Q-14 |
 | REQ-IF-001 | ตัดมัดจำผ่าน Payment Gateway ตาม IF-01 (authorize แล้ว capture) | Must | Med | AC-07-05, AC-07-06 | |
-| REQ-IF-005 | status-inquiry ด้วย reference เดิมเมื่อ gateway ไม่ตอบใน gateway-timeout | Must | Low | AC-07-05, AC-07-07 | ค่า timeout = Q-19 ชั่วคราว 30 วินาที |
+| REQ-IF-005 | status-inquiry ด้วย reference เดิมเมื่อ gateway ไม่ตอบใน gateway-timeout | Must | Low | AC-07-05, AC-07-07 | Q-19 ทีมยืนยัน timeout 30 วินาที; ตรวจสัญญาจริงต่อใน GAP-07 |
 | REQ-QA-003 | ขั้นตอนค้นหาและยืนยันไม่เกิน 2 วินาที p95 ที่ผู้ใช้พร้อมกัน 500 คน | Should | Med | AC-07-08 | CR-02 เสนอเขียนใหม่ให้วัดได้ |
 | REQ-SEC-004 | ช่างเห็นเบอร์ลูกค้าเฉพาะ 2 ชั่วโมงก่อนนัดจนปิดงาน | Must | High | AC-07-09 | |
 | REQ-PRV-002 | เบอร์โทรลูกค้าเป็น PII ห้ามลง log | Must | High | AC-07-09 | |
@@ -83,7 +83,7 @@ Customer.phone เป็น PII (REQ-PRV-002) | ServiceAddress.geoPoint เป�
 |---|---|---|---|---|
 | Q-14 | BR-01 R3 ลูกค้ายกเลิกขณะช่างเดินทาง คืนเท่าไร | SH-01 | 11 ต.ค. | ไม่อนุญาตให้ยกเลิก ตอบ "ติดต่อ call center" |
 | Q-18 | ระยะล็อก 10 นาที (EV-041 ปากเปล่า) ขอยืนยันเป็นลายลักษณ์อักษร | Ops lead | 11 ต.ค. | 10 นาที (config HOLD_MINUTES) |
-| Q-19 | gateway-timeout ตามสัญญาคือกี่วินาที | Dev lead | 11 ต.ค. | 30 วินาที (config GATEWAY_TIMEOUT_SECONDS) ดู GAP-07 |
+| Q-19 | gateway-timeout ตามสัญญาคือกี่วินาที | Dev lead | 11 ต.ค. | ทีมยืนยัน 30 วินาที (config GATEWAY_TIMEOUT_SECONDS); ตรวจสัญญาจริงต่อใน GAP-07 |
 | Q-22 | ServiceAddress.geoPoint ต้องมี REQ-PRV ไหม | RE lead | 11 ต.ค. | เก็บ แต่ไม่ส่งออกนอกระบบ |
 | Q-23 | ถ้าลูกค้าปิดเบราว์เซอร์ระหว่างล็อก ใครปลดล็อก (คำถามจากกลุ่มข้างเคียง) | กลุ่ม X | 11 ต.ค. | หมดอายุเองตาม HOLD_MINUTES (AS-07) |
 | AS-03 | ลูกค้าหนึ่งคนมีที่อยู่ให้บริการได้หลายที่ | | | โมเดลรองรับ 1..* |

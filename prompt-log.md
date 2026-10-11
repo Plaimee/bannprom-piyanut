@@ -131,3 +131,98 @@ AI รัน test แบบเจาะจงของหน้าจอ: cd fro
 ผล: 1 file passed, 1 test passed
 สิ่งที่ตรวจ: UI แจ้ง "ช่วงเวลาถูกจองแล้ว" ปรับให้แสดงปุ่มช่วงใกล้เคียงและไม่เรียก onConfirmed เมื่อกรณี slot_taken
 ข้อสรุป: T-10 เสร็จและพร้อมให้ทีมตรวจ diff ก่อนรันชุด frontend ทั้งหมด
+
+## #37 | 11 ต.ค. 2569 | Copilot Chat (Agent) ใน Codespaces | /implement T-01 specs/002-booking/tasks.md
+
+ทีมเลือก T-01 ให้เริ่มก่อนตามลำดับ T-xx
+AI ตรวจ spec.md, plan.md, tasks.md, AGENTS.md, models.md และ rules.md พบว่า T-01 มีสถานะ "พร้อมทำ", ไม่มี prerequisite และมีเกณฑ์เสร็จครบ ไฟล์โครงสร้างฐานข้อมูลที่ระบุใน task มีอยู่แล้วจากการทำงานก่อนหน้า จึงไม่แก้โค้ดใน scope
+ผลตรวจ migration: upgrade(engine) สร้างตารางหลักครบ 8 ตาราง และ JOB_STATUSES มี 8 ค่า ตาม MD-STM-01
+ผล test: cd backend && pytest -v -k "AC_" = 14 passed, 1 skipped, 1 failed; failure คือ test_AC_07_08_search_under_load_scaled ล้มจาก concurrent request ทำให้ TimeSlot.start เป็น None ที่ technicians/service.py:58 (อยู่นอก scope T-01) รันซ้ำโดยตัด AC-07-08 ออกได้ 14 passed, 1 skipped, 1 deselected
+ผล frontend: cd frontend && npm test = 1 test passed
+สิ่งที่ AI เกือบต้องแก้ข้าม scope: failure ของ AC-07-08 อยู่ในงาน load test/เส้นทางค้นหาช่าง ไม่ใช่ไฟล์ใน T-01 จึงหยุด ไม่แก้ T-09/T-02 แทนทีม
+ข้อสรุป: ยังไม่เปลี่ยนสถานะ T-01 เพราะ pytest ทั้งชุดยังไม่ผ่าน; รอแก้ปัญหา AC-07-08 ใน task ที่เกี่ยวข้องก่อน
+
+## #38 | 11 ต.ค. 2569 | Copilot Chat (Agent) ใน Codespaces | แก้ test AC-07-08 ที่ไม่ผ่าน
+
+ทีมอนุญาตให้แก้ปัญหาการทดสอบที่ไม่ผ่านตามเห็นสมควร
+AI รันซ้ำ test_AC_07_08_search_under_load_scaled และยืนยันต้นเหตุ: fixture เดิมใช้ SQLite in-memory กับ StaticPool ที่แชร์ DBAPI connection เดียวกันข้าม request threads; SQLite แจ้ง InterfaceError: bad parameter or other API misuse (อีกรอบพบ TimeSlot.start เป็น None)
+แก้ backend/tests/test_load_scaled.py ให้ใช้ SQLite แบบไฟล์ชั่วคราวและ connection pool แยก session ต่อ request แทน fixture in-memory ที่ใช้กับ test อื่น; อัปเดต specs/002-booking/ac-results.md เพิ่มผล rerun
+ผล test: test AC-07-08 เจาะจงผ่าน 1 passed; `cd backend && pytest -v -k "AC_"` ผ่าน 15 passed, 1 skipped; Pylance syntax check ไม่พบ syntax errors
+ไม่มีการเปลี่ยน business logic หรือเกณฑ์ AC; AC-07-08 ยังเป็น scaled test 20 requests ไม่ใช่ผลตรวจรับจริงที่ 500 concurrent users และ CR-02 ยังรอ SH-01
+
+## #39 | 11 ต.ค. 2569 | Copilot Chat (Agent) ใน Codespaces | ปิด T-01 หลังแก้ test ที่บล็อก
+
+หลังแก้ AC-07-08 แล้ว รัน `cd backend && pytest -v -k "AC_"` ผ่าน 15 passed, 1 skipped; รัน test AC-07-08 เจาะจงผ่าน และ `cd frontend && npm test` ผ่าน 1 test จากการตรวจ T-01 ก่อนหน้า; ตรวจ migration พบ 8 ตารางและ 8 สถานะงาน
+เปลี่ยนสถานะ T-01 เป็น "เสร็จ รอทีมตรวจ" ตามเกณฑ์ใน tasks.md
+T-09 ยังคงรอ CR-02 เพราะผล AC-07-08 เป็น scaled test 20 requests ไม่ใช่การตรวจรับจริงที่ 500 concurrent users
+
+## #40 | 11 ต.ค. 2569 | Copilot Chat (Agent) ใน Codespaces | /implement T-02 specs/002-booking/tasks.md
+
+ทีมสั่งเริ่ม T-02 ถึง T-11 ตามลำดับ; เริ่มทำ T-02 ซึ่งเป็น task แรกที่พร้อมทำและมี prerequisite T-01 เสร็จแล้ว
+ตรวจ AC-07-02: เดิม test ตรวจว่าช่วงที่จองแล้วไม่ถูกเสนอและช่างที่อยู่นอก BR-03 ไม่แสดง แต่ไม่ได้ยืนยันชัดว่าช่างในระยะให้บริการยังปรากฏ จึงเพิ่ม assertion ยืนยันว่าช่างประสิทธิ์ปรากฏและช่างไกลมากไม่ปรากฏ
+ไฟล์โค้ด/test ที่แก้: backend/tests/test_booking.py; ผล `cd backend && pytest -v tests/test_booking.py::test_AC_07_02_slot_not_rebookable` = 1 passed
+เปลี่ยนสถานะ T-02 เป็น "เสร็จ รอทีมตรวจ"
+ไม่มีการเดาหรือปิด Q-xx ใน T-02; หยุดหลัง task เดียวตามขั้นตอน /implement
+
+## #41 | 11 ต.ค. 2569 | Copilot Chat (Agent) ใน Codespaces | /implement T-03 specs/002-booking/tasks.md
+
+ทีมขอใช้คำตอบ Q-18 และ implement T-03; spec ข้อ 9 ระบุ Q-18 = 10 นาที (config HOLD_MINUTES) อยู่แล้ว จึงไม่สร้างค่าคำตอบใหม่
+ก่อน implement พบว่าบันทึกทีม #24 เคยอนุญาตให้ลูกค้าคนเดิมต่ออายุ hold ก่อนหมดเวลา แต่เกณฑ์ T-03 ฉบับปัจจุบันระบุว่าล็อกซ้ำได้เมื่อหมดอายุแล้วเท่านั้น ทีมเลือกให้ยึดเกณฑ์ T-03 และไม่ต่ออายุก่อนครบ 10 นาที
+แก้ backend/app/booking/service.py ให้ปฏิเสธการล็อกซ้ำทุกกรณีเมื่อช่วงยังมีสถานะ held; เมื่อถึง hold_expires_at ระบบเคลียร์ล็อกหมดอายุและอนุญาตให้ลูกค้าอื่นล็อกใหม่
+เพิ่ม test_AC_07_04_hold_expires_before_relock ใน backend/tests/test_booking.py ตรวจเวลา hold 10 นาที, การปฏิเสธก่อนหมดอายุ และการล็อกใหม่ที่เวลาหมดอายุ
+ผล test เจาะจง: 3 passed (test ใหม่ AC-07-04, AC-07-04 no-charge, AC-07-02); backend acceptance suite `pytest -v -k "AC_"`: 16 passed, 1 skipped; Pylance syntax checks ของ service.py และ test_booking.py ผ่าน
+เปลี่ยนสถานะ T-03 เป็น "เสร็จ รอทีมตรวจ"; ไม่มีการแก้ไฟล์นอก task scope นอกจาก tasks.md และ prompt-log.md สำหรับติดตามงาน
+
+## #42 | 11 ต.ค. 2569 | Copilot Chat (Agent) ใน Codespaces | /implement T-04 specs/002-booking/tasks.md
+
+ทีมสั่ง implement T-04; task มีสถานะพร้อมทำ, prerequisites T-02 และ T-03 เสร็จรอทีมตรวจแล้ว, และไฟล์/เกณฑ์เสร็จครบ
+ตรวจ AC-07-01 และ AC-07-04: implementation สร้างงานสถานะ confirmed หลัง payment approved, เปลี่ยน slot เป็น booked, และปฏิเสธ slot ที่ booked ก่อนเรียก payment gateway อยู่แล้ว; เพิ่ม test_AC_07_01_cannot_book_same_slot_twice ยืนยันว่าการจองซ้ำได้ 409 โดยไม่มี job/payment เพิ่มและไม่มี gateway call ซ้ำ
+ไฟล์โค้ด/test ที่แก้: backend/tests/test_booking.py; ผล focused tests AC-07-01 success, AC-07-01 duplicate booking, AC-07-04 no-charge = 3 passed
+ผล backend acceptance suite `cd backend && pytest -v -k "AC_"` = 17 passed, 1 skipped (R3 ยังรอ Q-14); Pylance syntax check ผ่าน
+ไม่มี Q-xx ของ T-04 ที่ต้องสมมติ และไม่ได้เปลี่ยน contract ของ Payment Gateway เดิม (REQ-CON-003); เปลี่ยนสถานะ T-04 เป็น "เสร็จ รอทีมตรวจ"
+
+## #43 | 11 ต.ค. 2569 | Copilot Chat (Agent) ใน Codespaces | /implement T-05 specs/002-booking/tasks.md
+
+ก่อนเริ่ม T-05 มีสถานะ "รอ Q-19"; ทีมตอบให้ปิด Q-19 ด้วยค่า 30 วินาที แล้วเริ่ม implement
+อัปเดต specs/002-booking/spec.md: REQ-IF-005 ระบุ timeout 30 วินาทีที่ทีมยืนยัน และ Q-19 ระบุว่ายืนยันแล้ว โดยคง GAP-07 ไว้เพื่อตรวจสัญญา gateway จริง; อัปเดต tasks.md ให้ T-05 พร้อมทำแล้วเป็นเสร็จรอทีมตรวจ และปรับรายการ Q-19 เดิมให้สอดคล้อง
+การทำงาน payments ตาม AC มีอยู่แล้ว; เพิ่ม assertions ใน backend/tests/test_payment.py ให้ตรวจ authorize ครั้งเดียว, reference เดิมใน authorize/status-inquiry/capture/void, capture เฉพาะกรณี approved, และ timeout 30 วินาที
+ผล test `cd backend && pytest -v tests/test_payment.py` = 3 passed; backend acceptance suite `cd backend && pytest -v -k "AC_"` = 17 passed, 1 skipped (Q-14); Pylance syntax check และ git diff --check ผ่าน
+ใช้ Gateway interface เดิม (REQ-CON-003); ก่อนทดสอบไม่พบ requirement ที่ต้องเดาอีก และหยุดหลัง T-05 ตามขั้นตอนหนึ่ง task ต่อครั้ง
+
+## #44 | 11 ต.ค. 2569 | Copilot Chat (Agent) ใน Codespaces | /implement T-06 specs/002-booking/tasks.md
+
+ตรวจสถานะ T-06 พร้อมทำและ prerequisite T-04 เสร็จรอทีมตรวจแล้ว; ตรวจ spec, plan, AC-07-03, models, rules และ AGENTS.md
+การ enqueue ข้อความ customer/technician เมื่อสร้างงาน confirmed, due_at = created_at + NOTIFY_WITHIN_SECONDS (60), และ GET /notifications/queue มีอยู่แล้วตาม plan; ไม่เพิ่ม provider จริงเพราะ plan ระบุ in-memory queue และ sender แยกทำงาน
+เพิ่ม assertions ใน backend/tests/test_booking.py:test_AC_07_03_notify_both_within_60s ตรวจงาน confirmed, ข้อความพอดี 2 รายการถึง customer/technician IDs ที่ถูกต้อง, created_at ตรงกับ Job.created_at, deadline ไม่เกิน 60 วินาที และข้อความปรากฏผ่าน GET /notifications/queue
+ผล test เฉพาะ AC-07-03 = 1 passed; backend acceptance suite `pytest -v -k "AC_"` = 17 passed, 1 skipped (R3/Q-14); Pylance syntax check ผ่าน
+ไม่มีสิ่งต้องเดาหรือ Q-xx สำหรับ T-06; เปลี่ยนสถานะ T-06 เป็น "เสร็จ รอทีมตรวจ"; หยุดหลัง task เดียวตาม /implement
+
+## #45 | 11 ต.ค. 2569 | Copilot Chat (Agent) ใน Codespaces | /implement T-07 specs/002-booking/tasks.md
+
+ตรวจ T-07 พร้อมทำและ prerequisite T-04 เสร็จรอทีมตรวจแล้ว; อ่าน spec, plan, AC-07-10, rules, models และ AGENTS.md; คง Q-14 เปิดและคง R3 ตามพฤติกรรมชั่วคราว D-07-04
+ตรวจ implementation ใน refund/rules.py, refund/service.py และ refund/router.py แล้วพบว่ารองรับ R1, R2, R4, R5, R6 และปฏิเสธ R3 ตามที่กำหนดอยู่แล้ว; เพิ่ม assertions ใน backend/tests/test_refund.py ให้ยืนยันสถานะ Job/slot และรายการ Refund จริง (R5, R6 และ R3 ชั่วคราวต้องไม่มีรายการคืน; R1/R2/R4 ต้องมีจำนวนเงินและ rule ถูกต้อง)
+ผล `cd backend && pytest -v tests/test_refund.py` = 6 passed, 1 skipped (R3 decision scenario รอ Q-14); ผล `cd backend && pytest -v -k "AC_"` = 17 passed, 1 skipped; Pylance syntax check ผ่าน; `git diff --check` ผ่าน; มี StarletteDeprecationWarning เรื่อง httpx แต่ไม่มี test fail
+ไม่มีการเดาคำตอบ Q-14; เปลี่ยนสถานะ T-07 เป็น "เสร็จ รอทีมตรวจ" โดยคงบันทึกว่า R3 ใช้พฤติกรรมชั่วคราวและ Q-14 ยังเปิด; หยุดหลัง task เดียวตาม /implement
+
+## #46 | 11 ต.ค. 2569 | Copilot Chat (Agent) ใน Codespaces | /implement T-08 specs/002-booking/tasks.md
+
+ตรวจ T-08 พร้อมทำและ prerequisite T-04 เสร็จรอทีมตรวจแล้ว; อ่าน spec, plan, AC-07-09, rules, models และ AGENTS.md
+พบ implementation ใน app/booking/service.py จำกัดการส่ง customer_phone ตาม PHONE_REVEAL_HOURS=2 และสถานะงานที่ยังไม่ปิด; app/booking/router.py ใช้ privacy.get_logger, app/privacy.py มี PhoneFilter สำหรับ REQ-PRV-002 อยู่แล้ว
+ขยาย backend/tests/test_privacy.py: เริ่ม caplog ก่อน booking เพื่อครอบคลุม log ตลอด flow; คงการตรวจไม่เปิดเบอร์ที่ 11:30, เปิดที่ 12:00, ไม่มีเบอร์รูปแบบมี/ไม่มีขีดใน log; เพิ่ม test_AC_07_09_phone_hidden_after_job_closed สำหรับ done, cancelled, auto_cancelled
+ผล `cd backend && pytest -v tests/test_privacy.py` = 4 passed; ผล `cd backend && pytest -v -k "AC_"` = 20 passed, 1 skipped (R3/Q-14); Pylance syntax check และ `git diff --check` ผ่าน; มี StarletteDeprecationWarning เรื่อง httpx แต่ไม่มี test fail
+ไม่พบ requirement หรือคำถามเปิดที่ต้องเดา; เปลี่ยนสถานะ T-08 เป็น "เสร็จ รอทีมตรวจ"; หยุดหลัง task เดียวตาม /implement
+
+## #47 | 11 ต.ค. 2569 | Copilot Chat (Agent) ใน Codespaces | /implement T-09 specs/002-booking/tasks.md
+
+T-09 เดิมรอ CR-02; ทีมสั่งให้สมมติ CR-02 จึงใช้ข้อเสนอใน changes/CR-02.md ตามที่เขียน: AC-07-08 วัด GET /technicians, เกณฑ์ 95/100 ภายใน 2 วินาที และแบบย่อส่วน 20 คำขอในห้องเรียน; บันทึกสมมติฐานใน quality-requirements.md โดยไม่อ้างว่า SH-01 อนุมัติ และไม่ย้าย AC ใหม่เข้า booking.feature ซึ่ง CR-02 กำหนดให้รออนุมัติ
+ขยาย backend/tests/test_load_scaled.py:test_AC_07_08_search_under_load_scaled ให้ตรวจทุกคำขอได้รับรายการช่างและ slot ที่คาดครบถ้วน นอกเหนือจาก status 200 และเกณฑ์เวลา 19/20 ภายใน 2 วินาที; อัปเดต ac-results.md ให้รายงานผลย่อส่วนอย่างชัดเจนว่าไม่ใช่ผลจริง 500 คำขอ; ปรับเงื่อนไข/สถานะ T-09 ใน tasks.md ให้ตรงกับสมมติฐาน CR-02
+ผล `cd backend && pytest -v tests/test_load_scaled.py` = 1 passed; ผล `cd backend && pytest -v -k "AC_"` = 20 passed, 1 skipped (R3/Q-14); Pylance syntax check และ `git diff --check` ผ่าน; มี StarletteDeprecationWarning เรื่อง httpx แต่ไม่มี test fail
+การทดสอบนี้ไม่ใช่การวัด load จริง 500 คำขอ; ผลจริงยังต้องรันบนเครื่องทดสอบตามข้อเสนอ CR-02 และ SH-01 ยังต้องอนุมัติอย่างเป็นทางการ; หยุดหลัง T-09 ตาม /implement
+
+## #48 | 11 ต.ค. 2569 | Copilot Chat (Agent) ใน Codespaces | /implement T-10 specs/002-booking/tasks.md
+
+ตรวจ T-10 สถานะพร้อมทำ; ช่องต้องทำหลังระบุว่าไม่มี prerequisite; อ่าน spec, plan, AC-07-04, models, rules และ AGENTS.md
+ตรวจไฟล์ UI ใน scope แล้วพบ App, client, TechnicianPicker, ConfirmBooking และ BookingResult มี flow ค้นหา/เลือก/ล็อก/ยืนยันอยู่แล้ว; test เดิมจำลอง API 409 และตรวจข้อความ "ช่วงเวลาถูกจองแล้ว", alternatives และไม่มีการเปลี่ยนไปหน้าสำเร็จ
+เพิ่ม test ใน frontend/src/__tests__/AC-07-04.test.jsx ให้ทดสอบ end-to-end ระดับหน้าจอด้วย API จำลอง: ค้นหา GET, เลือกช่วงแล้วล็อก, ยืนยัน POST booking, แสดงงานและสถานะ "ยืนยันแล้ว"; คง test 409 เดิม
+ผล `cd frontend && npm test -- --run` = 2 tests passed; `cd frontend && npm run build` = build ผ่าน; `git diff --check` ผ่าน
+ไม่มีข้อกำหนดที่ต้องเดา; เปลี่ยนสถานะ T-10 เป็น "เสร็จ รอทีมตรวจ"; หยุดหลัง task เดียวตาม /implement

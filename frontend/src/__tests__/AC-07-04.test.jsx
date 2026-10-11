@@ -1,5 +1,6 @@
 // test หน้าจอของ AC-07-04 (REQ-FN-041, UC-07 E2): API จำลองตอบ 409 slot_taken พร้อมช่วงใกล้เคียง 2 ช่วง
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import App from '../App.jsx'
 import ConfirmBooking from '../pages/ConfirmBooking.jsx'
 
 const held = {
@@ -39,4 +40,53 @@ test('AC-07-04 แสดง "ช่วงเวลาถูกจองแล้
   // And กดเลือกตัวเลือกแล้วส่งช่วงที่เลือกกลับไป
   fireEvent.click(altButtons[0])
   expect(onPickAlternative).toHaveBeenCalledWith(expect.objectContaining({ slot_id: 2 }))
+})
+
+test('AC-07-04 เลือกช่างและช่วงเวลาว่าง แล้วยืนยันการจองสำเร็จ', async () => {
+  const api = {
+    getTechnicians: vi.fn().mockResolvedValue({
+      status: 200,
+      body: [{
+        technician_id: 7,
+        name: 'ประสิทธิ์',
+        slots: [{
+          slot_id: 11,
+          start: '2026-10-05T14:00:00',
+          end: '2026-10-05T16:00:00',
+        }],
+      }],
+    }),
+    holdSlot: vi.fn().mockResolvedValue({
+      status: 200,
+      body: { hold_expires_at: '2026-10-05T14:10:00' },
+    }),
+    createBooking: vi.fn().mockResolvedValue({
+      status: 201,
+      body: {
+        job_id: 42,
+        status: 'confirmed',
+        scheduled_start: '2026-10-05T14:00:00',
+      },
+    }),
+  }
+
+  render(<App api={api} customerId={1} addressId={3} />)
+
+  fireEvent.click(screen.getByRole('button', { name: 'ค้นหาช่างที่ว่างใน 7 วัน' }))
+  const slotButton = await screen.findByRole('button', { name: /14:00/ })
+  expect(screen.getByText('ช่าง ประสิทธิ์')).toBeInTheDocument()
+  fireEvent.click(slotButton)
+
+  const confirmButton = await screen.findByRole('button', { name: /ยืนยันและชำระมัดจำ 350 บาท/ })
+  expect(api.holdSlot).toHaveBeenCalledWith({ slotId: 11, customerId: 1 })
+  fireEvent.click(confirmButton)
+
+  expect(await screen.findByText('งาน #42')).toBeInTheDocument()
+  expect(screen.getByText('สถานะ: ยืนยันแล้ว')).toBeInTheDocument()
+  expect(api.createBooking).toHaveBeenCalledWith({
+    customerId: 1,
+    slotId: 11,
+    addressId: 3,
+    category: 'ประปา',
+  })
 })
